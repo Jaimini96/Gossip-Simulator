@@ -28,9 +28,9 @@ defmodule  Service do
         "line"   -> Line.create_network(numberOfNodes, 0)
                     # deactivate(percentage)
                     GenServer.cast(Line.droid_name(round(1)),{:message_gossip, :_sending})
-        # "grid"   -> Grid.create_network(size,false, 0)
-        #             deactivate(percentage)
-        #             GenServer.cast(Grid.droid_name(round(size/2),round(size/2)),{:message_gossip, :_sending})
+        "grid"   -> Grid.create_network(size,false, 0)
+                    #deactivate(percentage)
+                    GenServer.cast(Grid.droid_name(round(size/2),round(size/2)),{:message_gossip, :_sending})
         # "i_grid" -> Grid.create_network(size,true, 0)
         #             deactivate(percentage)
         #             GenServer.cast(Grid.droid_name(round(size/2),round(size/2)),{:message_gossip, :_sending})
@@ -82,6 +82,7 @@ defmodule  Service do
     end_time = DateTime.utc_now
     convergence_time=DateTime.diff(end_time,init_time,:millisecond)
     IO.puts("Convergence time: #{convergence_time} ms")
+    :init.stop
     {:noreply,[cast_num+1,received, hibernated ++ droid,droid, prev_droid, r_count, h_count + 1,size,draw_every,init_time,droids,dead_droids]}
   end
 
