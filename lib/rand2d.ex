@@ -1,4 +1,4 @@
-defmodule Grid do
+defmodule Rand2d do
   use GenServer
 
    # DECISION : GOSSIP vs PUSH_SUM
@@ -13,7 +13,7 @@ defmodule Grid do
 
   # GOSSIP - RECIEVE Main
   def handle_cast({:message_gossip, _received}, [status,count,sent,size,x,y| mates ] = state ) do
-    case count < 100 do
+    case count < 20 do
       true ->
         GenServer.cast(Master,{:received, [{x,y}]})
         gossip(x,y,mates,self())
@@ -38,17 +38,13 @@ defmodule Grid do
     # end
   end
 
-  def gossip(x,y,mates,pid) do
-    the_one = the_chosen_one(mates)
-    GenServer.cast(the_one, {:message_gossip, :_sending})
-  end
 
   # NETWORK : Creating Network
   def create_network(n ,imperfect \\ false, is_push_sum \\ 0) do
     droids =
       for x <- 1..n, y<- 1..n do
         name = droid_name(x,y)
-        GenServer.start_link(Grid, [x,y,n, is_push_sum], name: name)
+        GenServer.start_link(Rand2d, [x,y,n, is_push_sum], name: name)
         name
       end
     GenServer.cast(Master,{:droids_update,droids})

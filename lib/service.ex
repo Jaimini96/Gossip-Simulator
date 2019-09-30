@@ -21,6 +21,8 @@ defmodule  Service do
 
   def main_(numberOfNodes, topology, algorithm, percentage) do
     size =  round(Float.ceil(:math.sqrt(numberOfNodes)))
+    cubeRoot = round(Float.ceil(:math.pow(numberOfNodes, 1/3)))
+    # IO.puts ("cuberoot : #{cubeRoot}")
     Service.supervise(size)
     case algorithm do
       "gossip" ->
@@ -28,15 +30,21 @@ defmodule  Service do
         "line"   -> Line.create_network(numberOfNodes, 0)
                     # deactivate(percentage)
                     GenServer.cast(Line.droid_name(round(1)),{:message_gossip, :_sending})
-        "grid"   -> Grid.create_network(size,false, 0)
+        "rand2D"   -> Rand2d.create_network(size,false, 0)
                     #deactivate(percentage)
-                    GenServer.cast(Grid.droid_name(round(size/2),round(size/2)),{:message_gossip, :_sending})
-        # "i_grid" -> Grid.create_network(size,true, 0)
-        #             deactivate(percentage)
-        #             GenServer.cast(Grid.droid_name(round(size/2),round(size/2)),{:message_gossip, :_sending})
-        # "full"   -> Full.create_network(numNodes, 0)
-        #             deactivate(percentage)
-        #             GenServer.cast(Full.droid_name(round(numNodes/2)),{:message_gossip, :_sending})
+                    GenServer.cast(Rand2d.droid_name(round(size/2),round(size/2)),{:message_gossip, :_sending})
+        "3Dtorus"   -> Torus3d.create_network(cubeRoot,false, 0)
+                    #deactivate(percentage)
+                    GenServer.cast(Torus3d.droid_name(round(cubeRoot/2),round(cubeRoot/2),round(cubeRoot/2)),{:message_gossip, :_sending})
+        "honeycomb" -> Honeycomb.create_network(round(size*size), 0)
+                    # deactivate(percentage)
+                    GenServer.cast(Honeycomb.droid_name(round(1)),{:message_gossip, :_sending})
+        "randhoneycomb" -> Randhoneycomb.create_network(round(size*size), 0)
+                    # deactivate(percentage)
+                    GenServer.cast(Randhoneycomb.droid_name(round(1)),{:message_gossip, :_sending})
+        "full"   -> Full.create_network(numberOfNodes, 0)
+                    #deactivate(percentage)
+                    GenServer.cast(Full.droid_name(round(numberOfNodes/2)),{:message_gossip, :_sending})
         end
       "pushsum" ->
         case topology do
