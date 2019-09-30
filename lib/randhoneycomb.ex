@@ -41,7 +41,7 @@ defmodule Randhoneycomb do
 
   def droid_mates(self,n) do
     elementsPerRow = round(:math.sqrt(n))
-    neighbors =[getFirstNeighbor(self,elementsPerRow),getSecondNeighbor(self,elementsPerRow,n), getThirdNeighbor(self,elementsPerRow,n)]
+    neighbors =[:rand.uniform(n),getFirstNeighbor(self,elementsPerRow),getSecondNeighbor(self,elementsPerRow,n), getThirdNeighbor(self,elementsPerRow,n)]
     filteredNeighbors = Enum.filter(neighbors, fn(x) -> x != nil end)
     # IO.puts filteredNeighbors
     neighborIds = Enum.map(filteredNeighbors, fn(x) -> droid_name(x) end)
