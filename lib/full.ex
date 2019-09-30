@@ -26,34 +26,68 @@ defmodule Full do
 
   # GOSSIP  - SEND Main
   def gossip(x,pid, n,i,j) do
-    the_one = the_chosen_one(n)
-    case the_one == droid_name(x) do
+    the_one = selected_neighbor(n)
+    case the_one == node_name(x) do
       true -> gossip(x,pid, n,i,j)
       false ->
         GenServer.cast(the_one, {:message_gossip, :_sending})
-        # ina_xy -> GenServer.cast(Master,{:droid_inactive, ina_xy})
+        # ina_xy -> GenServer.cast(Master,{:neighbors_inactive, ina_xy})
         #gossip(x,pid, n,i,j)
         # case GenServer.call(the_one,:is_active) do
         #   Active -> GenServer.cast(the_one, {:message_gossip, :_sending})
-        #             ina_xy -> GenServer.cast(Master,{:droid_inactive, ina_xy})
+        #             ina_xy -> GenServer.cast(Master,{:neighbors_inactive, ina_xy})
         #             gossip(x,pid, n,i,j)
         # end
       end
   end
 
+      # PUSHSUM - RECIEVE Main
+  def handle_cast({:message_push_sum, {rec_s, rec_w} }, [status,count,streak,prev_s_w,term, s ,w, n, x | neighbors ] = state ) do
+    length = round(Float.ceil(:math.sqrt(n)))
+    i = rem(x-1,length) + 1
+    j = round(Float.floor(((x-1)/length))) + 1
+    GenServer.cast(Master,{:received, [{i,j}]})
+      case abs(((s+rec_s)/(w+rec_w))-prev_s_w) < :math.pow(10,-10) do
+        false ->push_sum(x,(s+rec_s)/2,(w+rec_w)/2,n,self(),i,j)
+                {:noreply,[status,count+1, 0, (s+rec_s)/(w+rec_w), term, (s+rec_s)/2, (w+rec_w)/2, n, x  | neighbors]}
+        true ->
+          case streak + 1 == 3 do
+            true ->  GenServer.cast(Master,{:hibernated, [{i,j}]})
+                      {:noreply,[status,count+1, streak+1, (s+rec_s)/(w+rec_w), 1, (s+rec_s), (w+rec_w), n, x  | neighbors]}
+            false -> push_sum(x,(s+rec_s)/2, (w+rec_w)/2, n, self(), i, j)
+                      {:noreply,[status,count+1, streak+1, (s+rec_s)/(w+rec_w), 0, (s+rec_s)/2, (w+rec_w)/2, n, x  | neighbors]}
+          end
+      end
+  end
+
+  # PUSHSUM  - SEND MAIN
+  def push_sum(x,s,w,n,pid ,i,j) do
+    the_one = selected_neighbor(n)
+    GenServer.cast(the_one,{:message_push_sum,{ s,w}})
+    # case GenServer.call(the_one,:is_active) do
+    #   Active -> GenServer.cast(the_one,{:message_push_sum,{ s,w}})
+    #   ina_xy ->  GenServer.cast(Master,{:node_inactive, ina_xy})
+    #             new_neighbor = GenServer.call(Master,:handle_node_failure)
+    #             GenServer.cast(self(),{:remove_neighbor,the_one})
+    #             GenServer.cast(self(),{:add_new_neighbor,new_neighbor})
+    #             GenServer.cast(new_neighbor,{:add_new_neighbor,node_name(x)})
+    #             GenServer.cast(self(),{:retry_push_sum,{x,s,w,pid,i,j}})
+    # end
+  end
+
     # NETWORK : Creating Network
-  def create_network(n, is_push_sum \\ 0) do
-    droids =
+  def create_topology(n, is_push_sum \\ 0) do
+    all_nodes =
       for x <- 1..n do
-        name = droid_name(x)
+        name = node_name(x)
         GenServer.start_link(Full, [x,n,is_push_sum], name: name)
         name
       end
-    GenServer.cast(Master,{:droids_update,droids})
+    GenServer.cast(Master,{:all_nodes_update,all_nodes})
   end
 
   # NETWORK : Naming the node
-  def droid_name(x) do
+  def node_name(x) do
     a = x|> Integer.to_string |> String.pad_leading(7,"0")
     "Elixir.D"<>a
     |>String.to_atom
@@ -63,9 +97,9 @@ defmodule Full do
   # ~ Not required as all are neighbors
 
   # NETWORK : Choosing a neigbor randomly to send message to
-  def the_chosen_one(n) do
+  def selected_neighbor(n) do
     :rand.uniform(n)
-    |> droid_name()
+    |> node_name()
   end
 
 end
