@@ -59,35 +59,6 @@ defmodule Line do
     {:noreply,state}
   end
 
-    # PUSHSUM - RECIEVE Main
-  def handle_cast({:message_push_sum, {rec_s, rec_w} }, [status,count,streak,prev_s_w,term, s ,w, n, x | neighbors ] = state ) do
-    [i,j] = get_cordinates(n, x)
-    GenServer.cast(Master,{:received, [{i,j}]})
-      case abs(((s+rec_s)/(w+rec_w))-prev_s_w) < :math.pow(10,-10) do
-        false ->push_sum(x,(s+rec_s)/2,(w+rec_w)/2,neighbors,self(),i,j)
-                {:noreply,[status,count+1, 0, (s+rec_s)/(w+rec_w), term, (s+rec_s)/2, (w+rec_w)/2, n, x  | neighbors]}
-        true ->
-          case streak + 1 == 3 do
-            true ->  GenServer.cast(Master,{:hibernated, [{i,j}]})
-                      {:noreply,[status,count+1, streak+1, (s+rec_s)/(w+rec_w), 1, (s+rec_s), (w+rec_w), n, x  | neighbors]}
-            false -> push_sum(x,(s+rec_s)/2, (w+rec_w)/2, neighbors, self(), i, j)
-                      {:noreply,[status,count+1, streak+1, (s+rec_s)/(w+rec_w), 0, (s+rec_s)/2, (w+rec_w)/2, n, x  | neighbors]}
-          end
-      end
-  end
-
-  # PUSHSUM  - SEND MAIN
-  def push_sum(x,s,w,neighbors,pid ,i,j) do
-    the_one = selected_neighbor(neighbors)
-    case GenServer.call(the_one,:is_active) do
-      Active -> GenServer.cast(the_one,{:message_push_sum,{ s,w}})
-      ina_xy ->  GenServer.cast(Master,{:neighbors_inactive, ina_xy})
-                new_neighbor = GenServer.call(Master,:handle_node_failure)
-                rerun_pushsum(the_one, new_neighbor, x,s,w,pid, i,j)
-
-    end
-  end
-
   def rerun_pushsum(the_one, new_neighbor, x, s,w,pid, i,j) do
     GenServer.cast(self(),{:remove_neighbor,the_one})
     GenServer.cast(self(),{:add_new_neighbor,new_neighbor})
@@ -117,6 +88,37 @@ defmodule Line do
   def handle_cast({:goto_sleep, _},[ status |t ] ) do
     {:noreply,[ Inactive | t]}
   end
+
+    # PUSHSUM - RECIEVE Main
+  def handle_cast({:message_push_sum, {rec_s, rec_w} }, [status,count,streak,prev_s_w,term, s ,w, n, x | neighbors ] = state ) do
+    [i,j] = get_cordinates(n, x)
+    GenServer.cast(Master,{:received, [{i,j}]})
+      case abs(((s+rec_s)/(w+rec_w))-prev_s_w) < :math.pow(10,-10) do
+        false ->push_sum(x,(s+rec_s)/2,(w+rec_w)/2,neighbors,self(),i,j)
+                {:noreply,[status,count+1, 0, (s+rec_s)/(w+rec_w), term, (s+rec_s)/2, (w+rec_w)/2, n, x  | neighbors]}
+        true ->
+          case streak + 1 == 3 do
+            true ->  GenServer.cast(Master,{:hibernated, [{i,j}]})
+                      {:noreply,[status,count+1, streak+1, (s+rec_s)/(w+rec_w), 1, (s+rec_s), (w+rec_w), n, x  | neighbors]}
+            false -> push_sum(x,(s+rec_s)/2, (w+rec_w)/2, neighbors, self(), i, j)
+                      {:noreply,[status,count+1, streak+1, (s+rec_s)/(w+rec_w), 0, (s+rec_s)/2, (w+rec_w)/2, n, x  | neighbors]}
+          end
+      end
+  end
+
+  # PUSHSUM  - SEND MAIN
+  def push_sum(x,s,w,neighbors,pid ,i,j) do
+    the_one = selected_neighbor(neighbors)
+    case GenServer.call(the_one,:is_active) do
+      Active -> GenServer.cast(the_one,{:message_push_sum,{ s,w}})
+      ina_xy ->  GenServer.cast(Master,{:neighbors_inactive, ina_xy})
+                new_neighbor = GenServer.call(Master,:handle_node_failure)
+                rerun_pushsum(the_one, new_neighbor, x,s,w,pid, i,j)
+
+    end
+  end
+
+
   def get_neighbors(self,n) do
     case self do
       1 -> [ node_name(2)]

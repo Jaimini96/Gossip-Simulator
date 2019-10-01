@@ -13,9 +13,7 @@ defmodule Full do
 
     # GOSSIP - RECIEVE Main
   def handle_cast({:message_gossip, _received}, [status,count,sent,n,x ] =state ) do
-    length = round(Float.ceil(:math.sqrt(n)))
-    i = rem(x-1,length) + 1
-    j = round(Float.floor(((x-1)/length))) + 1
+    [i,j] = get_cordinates(n,x)
     case count < 100 do
       true ->  GenServer.cast(Master,{:received, [{i,j}]})
                gossip(x,self(),n,i,j)
@@ -30,22 +28,17 @@ defmodule Full do
     case the_one == node_name(x) do
       true -> gossip(x,pid, n,i,j)
       false ->
-        GenServer.cast(the_one, {:message_gossip, :_sending})
-        # ina_xy -> GenServer.cast(Master,{:neighbors_inactive, ina_xy})
-        #gossip(x,pid, n,i,j)
-        # case GenServer.call(the_one,:is_active) do
-        #   Active -> GenServer.cast(the_one, {:message_gossip, :_sending})
-        #             ina_xy -> GenServer.cast(Master,{:neighbors_inactive, ina_xy})
-        #             gossip(x,pid, n,i,j)
-        # end
+        case GenServer.call(the_one,:is_active) do
+          Active -> GenServer.cast(the_one, {:message_gossip, :_sending})
+                    inactive_xy -> GenServer.cast(Master,{:neighbors_inactive, inactive_xy})
+                    gossip(x,pid, n,i,j)
+        end
       end
   end
 
       # PUSHSUM - RECIEVE Main
   def handle_cast({:message_push_sum, {rec_s, rec_w} }, [status,count,streak,prev_s_w,term, s ,w, n, x | neighbors ] = state ) do
-    length = round(Float.ceil(:math.sqrt(n)))
-    i = rem(x-1,length) + 1
-    j = round(Float.floor(((x-1)/length))) + 1
+    [i,j] = get_cordinates(n,x)
     GenServer.cast(Master,{:received, [{i,j}]})
       case abs(((s+rec_s)/(w+rec_w))-prev_s_w) < :math.pow(10,-10) do
         false ->push_sum(x,(s+rec_s)/2,(w+rec_w)/2,n,self(),i,j)
@@ -63,18 +56,40 @@ defmodule Full do
   # PUSHSUM  - SEND MAIN
   def push_sum(x,s,w,n,pid ,i,j) do
     the_one = selected_neighbor(n)
-    GenServer.cast(the_one,{:message_push_sum,{ s,w}})
-    # case GenServer.call(the_one,:is_active) do
-    #   Active -> GenServer.cast(the_one,{:message_push_sum,{ s,w}})
-    #   ina_xy ->  GenServer.cast(Master,{:node_inactive, ina_xy})
-    #             new_neighbor = GenServer.call(Master,:handle_node_failure)
-    #             GenServer.cast(self(),{:remove_neighbor,the_one})
-    #             GenServer.cast(self(),{:add_new_neighbor,new_neighbor})
-    #             GenServer.cast(new_neighbor,{:add_new_neighbor,node_name(x)})
-    #             GenServer.cast(self(),{:retry_push_sum,{x,s,w,pid,i,j}})
-    # end
+    case the_one == node_name(x) do
+      true -> push_sum(x,s,w,n,pid,i,j)
+      false ->
+        case GenServer.call(the_one,:is_active) do
+          Active -> GenServer.cast(the_one,{:message_push_sum,{ s,w}})
+          ina_xy -> GenServer.cast(Master,{:neighbors_inactive, ina_xy})
+                    push_sum(x,s,w,n,pid ,i,j)
+        end
+      end
   end
 
+  def handle_call(:is_active , _from, state) do
+    {status,n,x} =
+      case state do
+        [status,_count,_streak,_prev_s_w,0, _s ,_w, n, x | _neighbors ] -> {status,n,x}
+        [status,_count,_sent,n,x| _neighbors ] -> {status,n,x}
+      end
+    case status == Active do
+      true -> {:reply, status, state }
+      false ->
+        [i,j] = get_cordinates(n, x)
+        {:reply, [{i,j}], state }
+    end
+  end
+  def get_cordinates(numberOfNodes,x) do
+    length = round(Float.ceil(:math.sqrt(numberOfNodes)))
+    i = rem(x-1,length) + 1
+    j = round(Float.floor(((x-1)/length))) + 1
+    [i,j]
+  end
+
+  def handle_cast({:goto_sleep, _},[ status |t ] ) do
+    {:noreply,[ Inactive | t]}
+  end
     # NETWORK : Creating Network
   def create_topology(n, is_push_sum \\ 0) do
     all_nodes =
