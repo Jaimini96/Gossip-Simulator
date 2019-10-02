@@ -47,7 +47,7 @@ defmodule  Service do
                     GenServer.cast(Torus3d.node_name(round(cubeRoot/2),round(cubeRoot/2),round(cubeRoot/2)),{:message_gossip, :_sending})
         "honeycomb" -> Honeycomb.create_topology(round(size*size), 0)
                     fail_forcefully(percentage)
-                    GenServer.cast(Honeycomb.node_name(round(1)),{:message_gossip, :_sending})
+                    GenServer.cast(Honeycomb.node_name(round(size)),{:message_gossip, :_sending})
         "randhoneycomb" -> Randhoneycomb.create_topology(round(size*size), 0)
                     fail_forcefully(percentage)
                     GenServer.cast(Randhoneycomb.node_name(round(1)),{:message_gossip, :_sending})

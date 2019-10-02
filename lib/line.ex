@@ -14,14 +14,57 @@ defmodule Line do
   def handle_cast({:message_gossip, _received}, [status,count,sent,numberOfNodes,x| neighbors ] =state ) do
 
     [i,j] = get_cordinates(numberOfNodes,x)
-    case count < 200 do
+    self_name  = node_name(x)
+    case count < 300 do
       true ->  GenServer.cast(Master,{:received, [{i,j}]})
                gossip(x,neighbors,self(),numberOfNodes,i,j)
-      false -> GenServer.cast(Master,{:hibernated, [{i,j}]})
+      false ->
+        list =
+          for a <- 1..round(numberOfNodes/3) do
+            randNode =   GenServer.call( check_self(x,numberOfNodes)|> node_name(), :get_each_count)
+
+          randNode
+          end
+        # [GenServer.call(:rand.uniform(numberOfNodes) |> node_name(), :get_each_count) ,GenServer.call(:rand.uniform(numberOfNodes) |> node_name(), :get_each_count) ,GenServer.call(:rand.uniform(numberOfNodes) |> node_name(), :get_each_count) ,GenServer.call(:rand.uniform(numberOfNodes) |> node_name(), :get_each_count) ]
+
+        Enum.filter(list, fn(x) -> x != node_name(x) end)
+        case Enum.member?(list, 0) do
+          true -> gossip(x,neighbors,self(),numberOfNodes,i,j)
+          _ -> GenServer.cast(Master,{:hibernated, [{i,j}]})
+        end
+
     end
     {:noreply,[status,count+1 ,sent,numberOfNodes, x  | neighbors]}
   end
 
+  def check_self(x, n) do
+    a = :rand.uniform(n)
+    if a== x do
+      check_self(x,n)
+    else a
+    end
+  end
+
+  def handle_call(:get_each_count, _from,[status,count,sent,numberOfNodes,x| neighbors ] =state ) do
+
+    # IO.puts count
+    {:reply, count, state}
+  end
+
+
+  def handle_call(:is_active , _from, state) do
+    {status,n,x} =
+      case state do
+        [status,_count,_streak,_prev_s_w,0, _s ,_w, n, x | _neighbors ] -> {status,n,x}
+        [status,_count,_sent,n,x| _neighbors ] -> {status,n,x}
+      end
+    case status == Active do
+      true -> {:reply, status, state }
+      false ->
+        [i,j] = get_cordinates(n, x)
+        {:reply, [{i,j}], state }
+    end
+  end
   def get_cordinates(numberOfNodes,x) do
     length = round(Float.ceil(:math.sqrt(numberOfNodes)))
     i = rem(x-1,length) + 1
@@ -71,19 +114,6 @@ defmodule Line do
     {:noreply,state}
   end
 
-  def handle_call(:is_active , _from, state) do
-    {status,n,x} =
-      case state do
-        [status,_count,_streak,_prev_s_w,0, _s ,_w, n, x | _neighbors ] -> {status,n,x}
-        [status,_count,_sent,n,x| _neighbors ] -> {status,n,x}
-      end
-    case status == Active do
-      true -> {:reply, status, state }
-      false ->
-        [i,j] = get_cordinates(n, x)
-        {:reply, [{i,j}], state }
-    end
-  end
 
   def handle_cast({:goto_sleep, _},[ status |t ] ) do
     {:noreply,[ Inactive | t]}

@@ -1,7 +1,6 @@
 defmodule Honeycomb do
   use GenServer
 
-  # DECISION : GOSSIP vs PUSH_SUM
   def init([x,numberOfNodes, is_push_sum]) do
     neighbors = get_neighbors(x,numberOfNodes)
     # IO.puts Enum.at(neighbors,1)
@@ -11,7 +10,6 @@ defmodule Honeycomb do
     end
   end
 
-    # GOSSIP - RECIEVE Main
   def handle_cast({:message_gossip, _received}, [status,count,sent,numberOfNodes,x| neighbors ] =state ) do
     [i,j] = get_cordinates(numberOfNodes,x)
     case count < 200 do
@@ -28,7 +26,6 @@ defmodule Honeycomb do
     [i,j]
   end
 
-  # GOSSIP  - SEND Main
   def gossip(x,neighbors,pid, n,i,j) do
     the_one = selected_neighbor(neighbors)
 
@@ -94,7 +91,6 @@ defmodule Honeycomb do
     {:noreply,[ Inactive | t]}
   end
 
-      # PUSHSUM - RECIEVE Main
   def handle_cast({:message_push_sum, {rec_s, rec_w} }, [status,count,streak,prev_s_w,term, s ,w, n, x | neighbors ] = state ) do
     length = round(Float.ceil(:math.sqrt(n)))
     i = rem(x-1,length) + 1
@@ -113,7 +109,6 @@ defmodule Honeycomb do
       end
   end
 
-  # PUSHSUM  - SEND MAIN
   def push_sum(x,s,w,neighbors,pid ,i,j) do
     the_one = selected_neighbor(neighbors)
     case the_one == node_name(x) do
@@ -132,7 +127,7 @@ defmodule Honeycomb do
     elementsPerRow = round(:math.sqrt(n))
     neighbors =[getFirstNeighbor(self,elementsPerRow),getSecondNeighbor(self,elementsPerRow,n), getThirdNeighbor(self,elementsPerRow,n)]
     filteredNeighbors = Enum.filter(neighbors, fn(x) -> x != nil end)
-    # IO.puts filteredNeighbors
+    # IO.inspect filteredNeighbors
     neighborIds = Enum.map(filteredNeighbors, fn(x) -> node_name(x) end)
     # IO.inspect Enum.at(neighbors,0)
     neighborIds
@@ -159,12 +154,6 @@ defmodule Honeycomb do
 
     remainder = rem(rowNumber,2)
     isXOdd = rem(x,2)
-    # IO.puts("x: #{x}, elePerRow: #{elemPerRow}, n: #{n}, rownumber: #{rowNumber}, islastEl: #{isLastElementInRow} remainder: #{remainder}, isXOdd : #{isXOdd}")
-    # case remainder do
-    #   true -> case isXOdd && x > 1 do
-    #     true -> round(x-1)
-    #   end
-    # end
     neighbor  = cond do
       remainder == 0 && isXOdd == 0 && x > 1 && rem(x,elemPerRow) > 1 ->
         # IO.puts "Came"
@@ -185,6 +174,7 @@ defmodule Honeycomb do
   end
 
   def create_topology(numberOfNodes, is_push_sum \\ 0) do
+    # IO.puts numberOfNodes
     all_nodes =
       for x <- 1..numberOfNodes do
         name = node_name(x)
@@ -203,5 +193,4 @@ defmodule Honeycomb do
   def selected_neighbor(neighbors) do
     Enum.random(neighbors)
   end
-
 end
