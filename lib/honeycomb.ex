@@ -1,6 +1,44 @@
 defmodule Honeycomb do
   use GenServer
 
+  def getFirstNeighbor(x,elemPerRow) do
+    if (x-elemPerRow) >= 1 do
+      x-elemPerRow
+    end
+  end
+  def getSecondNeighbor(x,elemPerRow, n) do
+    if (x+elemPerRow) <= n do
+      x+elemPerRow
+    end
+  end
+  def getThirdNeighbor(x,elemPerRow, n)  do
+    isLastElementInRow = rem(x,elemPerRow) == 0
+
+    rowNumber = case isLastElementInRow do
+      true -> round(div(x,round(elemPerRow)))-1
+      false -> round(div(x,round(elemPerRow)))
+    end
+
+    remainder = rem(rowNumber,2)
+    isXOdd = rem(x,2)
+    neighbor  = cond do
+      remainder == 0 && isXOdd == 0 && x > 1 && rem(x,elemPerRow) > 1 ->
+        # IO.puts "Came"
+        round(x-1)
+      remainder == 0 && isXOdd == 1 && x< n ->
+        round(x+1)
+      remainder == 1 && isXOdd == 1 && x > 1 ->
+        round(x-1)
+      remainder == 1 && isXOdd == 0 && x< n ->
+        round(x+1)
+      x == 0 || x==n || rem(x, elemPerRow) <2->
+        nil
+      end
+
+    # IO.puts neighbor
+    neighbor
+
+  end
   def init([x,numberOfNodes, is_push_sum]) do
     neighbors = get_neighbors(x,numberOfNodes)
     # IO.puts Enum.at(neighbors,1)
@@ -134,44 +172,7 @@ defmodule Honeycomb do
 
   end
 
-  def getFirstNeighbor(x,elemPerRow) do
-    if (x-elemPerRow) >= 1 do
-      x-elemPerRow
-    end
-  end
-  def getSecondNeighbor(x,elemPerRow, n) do
-    if (x+elemPerRow) <= n do
-      x+elemPerRow
-    end
-  end
-  def getThirdNeighbor(x,elemPerRow, n)  do
-    isLastElementInRow = rem(x,elemPerRow) == 0
 
-    rowNumber = case isLastElementInRow do
-      true -> round(div(x,round(elemPerRow)))-1
-      false -> round(div(x,round(elemPerRow)))
-    end
-
-    remainder = rem(rowNumber,2)
-    isXOdd = rem(x,2)
-    neighbor  = cond do
-      remainder == 0 && isXOdd == 0 && x > 1 && rem(x,elemPerRow) > 1 ->
-        # IO.puts "Came"
-        round(x-1)
-      remainder == 0 && isXOdd == 1 && x< n ->
-        round(x+1)
-      remainder == 1 && isXOdd == 1 && x > 1 ->
-        round(x-1)
-      remainder == 1 && isXOdd == 0 && x< n ->
-        round(x+1)
-      x == 0 || x==n || rem(x, elemPerRow) <2->
-        nil
-      end
-
-    # IO.puts neighbor
-    neighbor
-
-  end
 
   def create_topology(numberOfNodes, is_push_sum \\ 0) do
     # IO.puts numberOfNodes

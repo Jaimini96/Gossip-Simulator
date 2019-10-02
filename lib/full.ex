@@ -3,7 +3,12 @@ defmodule Full do
   use GenServer
 
 
-  # DECISION:  GOSSIP vs PUSH_SUM
+
+  def selected_neighbor(n) do
+    :rand.uniform(n)
+    |> node_name()
+  end
+  #
   def init([x,n, is_push_sum]) do
     case is_push_sum do
       0 -> {:ok, [Active,0,0, n, x ] } #[ rec_count, sent_count, n, self_number_id | neighbors ]
@@ -11,7 +16,7 @@ defmodule Full do
     end
   end
 
-    # GOSSIP - RECIEVE Main
+    #
   def handle_cast({:message_gossip, _received}, [status,count,sent,n,x ] =state ) do
     [i,j] = get_cordinates(n,x)
     case count < 100 do
@@ -22,7 +27,6 @@ defmodule Full do
     {:noreply,[status,count+1 ,sent,n, x  ]}
   end
 
-  # GOSSIP  - SEND Main
   def gossip(x,pid, n,i,j) do
     the_one = selected_neighbor(n)
     case the_one == node_name(x) do
@@ -36,7 +40,7 @@ defmodule Full do
       end
   end
 
-      # PUSHSUM - RECIEVE Main
+      #
   def handle_cast({:message_push_sum, {rec_s, rec_w} }, [status,count,streak,prev_s_w,term, s ,w, n, x | neighbors ] = state ) do
     [i,j] = get_cordinates(n,x)
     GenServer.cast(Master,{:received, [{i,j}]})
@@ -53,7 +57,7 @@ defmodule Full do
       end
   end
 
-  # PUSHSUM  - SEND MAIN
+ #
   def push_sum(x,s,w,n,pid ,i,j) do
     the_one = selected_neighbor(n)
     case the_one == node_name(x) do
@@ -90,7 +94,6 @@ defmodule Full do
   def handle_cast({:goto_sleep, _},[ status |t ] ) do
     {:noreply,[ Inactive | t]}
   end
-    # NETWORK : Creating Network
   def create_topology(n, is_push_sum \\ 0) do
     all_nodes =
       for x <- 1..n do
@@ -101,20 +104,12 @@ defmodule Full do
     GenServer.cast(Master,{:all_nodes_update,all_nodes})
   end
 
-  # NETWORK : Naming the node
   def node_name(x) do
     a = x|> Integer.to_string |> String.pad_leading(7,"0")
     "Elixir.D"<>a
     |>String.to_atom
   end
 
-  # NETWORK : Defining and assigning Neighbors
-  # ~ Not required as all are neighbors
 
-  # NETWORK : Choosing a neigbor randomly to send message to
-  def selected_neighbor(n) do
-    :rand.uniform(n)
-    |> node_name()
-  end
 
 end

@@ -1,7 +1,14 @@
 defmodule Line do
   use GenServer
 
-  # DECISION : GOSSIP vs PUSH_SUM
+  def get_neighbors(self,n) do
+    case self do
+      1 -> [ node_name(2)]
+      ^n -> [node_name(n-1)]
+      _ -> [node_name(self-1), node_name(self+1)]
+    end
+  end
+
   def init([x,numberOfNodes, is_push_sum]) do
     neighbors = get_neighbors(x,numberOfNodes)
     case is_push_sum do
@@ -10,7 +17,7 @@ defmodule Line do
     end
   end
 
-    # GOSSIP - RECIEVE Main
+
   def handle_cast({:message_gossip, _received}, [status,count,sent,numberOfNodes,x| neighbors ] =state ) do
 
     [i,j] = get_cordinates(numberOfNodes,x)
@@ -72,7 +79,7 @@ defmodule Line do
     [i,j]
   end
 
-  # GOSSIP  - SEND Main
+
   def gossip(x,neighbors,pid, _n,i,j) do
     the_one = selected_neighbor(neighbors)
     case GenServer.call(the_one,:is_active) do
@@ -119,7 +126,7 @@ defmodule Line do
     {:noreply,[ Inactive | t]}
   end
 
-    # PUSHSUM - RECIEVE Main
+    #
   def handle_cast({:message_push_sum, {rec_s, rec_w} }, [status,count,streak,prev_s_w,term, s ,w, n, x | neighbors ] = state ) do
     [i,j] = get_cordinates(n, x)
     GenServer.cast(Master,{:received, [{i,j}]})
@@ -136,7 +143,7 @@ defmodule Line do
       end
   end
 
-  # PUSHSUM  - SEND MAIN
+ #
   def push_sum(x,s,w,neighbors,pid ,i,j) do
     the_one = selected_neighbor(neighbors)
     case GenServer.call(the_one,:is_active) do
@@ -149,13 +156,7 @@ defmodule Line do
   end
 
 
-  def get_neighbors(self,n) do
-    case self do
-      1 -> [ node_name(2)]
-      ^n -> [node_name(n-1)]
-      _ -> [node_name(self-1), node_name(self+1)]
-    end
-  end
+
 
   def create_topology(numberOfNodes, is_push_sum \\ 0) do
     all_nodes =

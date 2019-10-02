@@ -1,7 +1,30 @@
 defmodule Rand2d do
   use GenServer
 
-   # DECISION : GOSSIP vs PUSH_SUM
+
+  def get_neighbors(self_x,self_y,n) do   #where n is length of grid / sqrt of size of network
+
+
+  neighbors = for x <- 1..n , y <- 1..n do
+
+    distance = :math.sqrt(:math.pow((x-self_x),2) + :math.pow((y-self_y),2))
+    # IO.puts (" #{distance} d, #{n/10}, x #{x}, y: #{y}, self_x: #{self_x}, self_y = #{self_y} ")
+    if distance - (n/10) <= 0.0 && distance != 0.0  do
+      # IO.puts ("x: #{x}, y: #{y}")
+      name = node_name(x,y)
+      name
+    end
+
+  end
+  filtered = Enum.filter(neighbors, fn(x) -> x != nil end)
+  #  IO.inspect Enum.at(filtered,1)
+  if Enum.at(filtered,0) == nil do
+    IO.puts "No Neighbor found"
+  end
+  filtered
+
+  end
+  #
   def init([x,y,n, is_push_sum]) do
     neighbors = get_neighbors(x,y,n)
     case is_push_sum do
@@ -11,7 +34,7 @@ defmodule Rand2d do
   end
 
 
-  # GOSSIP - RECIEVE Main
+  #
   def handle_cast({:message_gossip, _received}, [status,count,sent,size,x,y| neighbors ] = state ) do
     case count < 20 do
       true ->
@@ -23,7 +46,6 @@ defmodule Rand2d do
     {:noreply,[status,count+1 ,sent,size, x , y | neighbors]}
   end
 
-  #GOSSIP  - SEND Main
   def gossip(x,y,neighbors,pid) do
     the_one = selected_neighbor(neighbors)
     # IO.inspect the_one
@@ -82,7 +104,7 @@ defmodule Rand2d do
   def handle_cast({:goto_sleep, _},[ status |t ] ) do
     {:noreply,[ Inactive | t]}
   end
-  # PUSHSUM - RECIEVE Main
+  #
   def handle_cast({:message_push_sum, {rec_s, rec_w} }, [status,count,streak,prev_s_w,term, s ,w, n, x, y | neighbors ] = state ) do
     length = round(Float.ceil(:math.sqrt(n)))
     GenServer.cast(Master,{:received, [{x,y}]})
@@ -99,7 +121,7 @@ defmodule Rand2d do
         end
   end
 
-  # PUSHSUM  - SEND MAIN
+ #
   def push_sum(s,w,neighbors,pid ,x,y) do
     the_one = selected_neighbor(neighbors)
     case GenServer.call(the_one,:is_active) do
@@ -110,7 +132,6 @@ defmodule Rand2d do
     end
   end
 
-  # NETWORK : Creating Network
   def create_topology(n ,imperfect \\ false, is_push_sum \\ 0) do
     all_nodes =
       for x <- 1..n, y<- 1..n do
@@ -119,14 +140,8 @@ defmodule Rand2d do
         name
       end
     GenServer.cast(Master,{:all_nodes_update,all_nodes})
-    # case imperfect do
-    #   true -> randomify_neighbors( Enum.shuffle(all_nodes) )
-    #           "Imperfect Grid: #{inspect all_nodes}"
-    #   false -> "2D Grid: #{inspect all_nodes}"
-    # end
   end
 
-      # NETWORK : Naming the node
   def node_name(x,y) do
     a = x|> Integer.to_string |> String.pad_leading(4,"0")
     b = y|> Integer.to_string |> String.pad_leading(4,"0")
@@ -134,32 +149,10 @@ defmodule Rand2d do
     |>String.to_atom
   end
 
-    # NETWORK : Defining and assigning Neighbors
   def selected_neighbor(neighbors) do
     Enum.random(neighbors)
   end
 
-  def get_neighbors(self_x,self_y,n) do   #where n is length of grid / sqrt of size of network
 
-
-    neighbors = for x <- 1..n , y <- 1..n do
-
-      distance = :math.sqrt(:math.pow((x-self_x),2) + :math.pow((y-self_y),2))
-      # IO.puts (" #{distance} d, #{n/10}, x #{x}, y: #{y}, self_x: #{self_x}, self_y = #{self_y} ")
-      if distance - (n/10) <= 0.0 && distance != 0.0  do
-        # IO.puts ("x: #{x}, y: #{y}")
-        name = node_name(x,y)
-        name
-      end
-
-    end
-    filtered = Enum.filter(neighbors, fn(x) -> x != nil end)
-    #  IO.inspect Enum.at(filtered,1)
-    if Enum.at(filtered,0) == nil do
-      IO.puts "No Neighbor found"
-    end
-    filtered
-
-  end
 
 end

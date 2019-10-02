@@ -101,7 +101,6 @@ defmodule  Service do
     GenServer.start_link(Service,size, name: Master)
   end
 
-  # NETWORK - update state with the active all_nodes
   def handle_cast({:all_nodes_update, all_nodes_update }, [_cast_num,_received, _hibernated,_prev_node, _prev_node_2, _r_count, _h_count,_size, _draw_every,_init_time, all_nodes, dead_all_nodes]) do
     {:noreply,[_cast_num,_received, _hibernated,_prev_node, _prev_node_2, _r_count, _h_count,_size,_draw_every,_init_time,all_nodes_update,dead_all_nodes]}
   end
@@ -131,7 +130,6 @@ defmodule  Service do
 
   end
 
-  # HANDLE FAILURE - updating the messages that received the message
   def handle_cast({:hibernated, node }, [cast_num,received, hibernated,prev_node, prev_node_2, r_count, h_count,size, draw_every,init_time, all_nodes,dead_all_nodes]) do
     end_time = DateTime.utc_now
     convergence_time=DateTime.diff(end_time,init_time,:millisecond)

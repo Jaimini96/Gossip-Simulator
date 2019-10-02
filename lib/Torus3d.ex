@@ -2,7 +2,28 @@ defmodule Torus3d do
 
   use GenServer
 
-    # DECISION : GOSSIP vs PUSH_SUM
+  def get_neighbors(self_x,self_y,self_z,n) do   #where n is length of grid / cuberoot of size of network
+    [left,right] =
+        case self_x do
+          1 -> [n, 2]
+          ^n -> [n-1, 1]
+          _ -> [self_x-1, self_x+1]
+        end
+    [top,bottom] =
+        case self_y do
+          1 -> [n, 2]
+          ^n -> [n-1, 1]
+          _ -> [self_y-1, self_y+1]
+        end
+    [front,back] =
+        case self_z do
+          1 -> [n, 2]
+          ^n -> [n-1, 1]
+          _ -> [self_z-1, self_z+1]
+        end
+    [node_name(left,self_y,self_z),node_name(right,self_y,self_z),node_name(self_x,top,self_z),node_name(self_x,bottom,self_z),node_name(self_x,self_y,front),node_name(self_x,self_y,back)]
+  end
+   #
   def init([x,y,z, n, is_push_sum]) do
     neighbors = get_neighbors(x,y,z,n)
     case is_push_sum do
@@ -11,10 +32,7 @@ defmodule Torus3d do
     end
   end
 
-
-
-
-  # GOSSIP - RECIEVE Main
+  #
   def handle_cast({:message_gossip, _received}, [status,count,sent,size,x,y,z| neighbors ] = state ) do
     case count < 100 do
       true ->
@@ -26,7 +44,6 @@ defmodule Torus3d do
     {:noreply,[status,count+1 ,sent,size, x , y, z | neighbors]}
   end
 
-    #GOSSIP  - SEND Main
   def gossip(x,y,z,neighbors,pid) do
     the_one = selected_neighbor(neighbors)
     # IO.inspect the_one
@@ -85,7 +102,7 @@ defmodule Torus3d do
   def handle_cast({:goto_sleep, _},[ status |t ] ) do
     {:noreply,[ Inactive | t]}
   end
-    # PUSHSUM - RECIEVE Main
+    #
   def handle_cast({:message_push_sum, {rec_s, rec_w} }, [status,count,streak,prev_s_w,term, s ,w, n, x, y,z | neighbors ] = state ) do
     # length = round(Float.ceil(:math.sqrt(n)))
     GenServer.cast(Master,{:received, [{x,y, z}]})
@@ -102,7 +119,7 @@ defmodule Torus3d do
         end
   end
 
-  # PUSHSUM  - SEND MAIN
+ #
   def push_sum(s,w,neighbors,pid ,x,y,z) do
     the_one = selected_neighbor(neighbors)
     case GenServer.call(the_one,:is_active) do
@@ -113,7 +130,6 @@ defmodule Torus3d do
     end
   end
 
-    # NETWORK : Creating Network
   def create_topology(n ,imperfect \\ false, is_push_sum \\ 0) do
     all_nodes =
       for x <- 1..n, y<- 1..n, z<- 1..n do
@@ -122,14 +138,8 @@ defmodule Torus3d do
         name
       end
     GenServer.cast(Master,{:all_nodes_update,all_nodes})
-    # case imperfect do
-    #   true -> randomify_neighbors( Enum.shuffle(all_nodes) )
-    #           "Imperfect Grid: #{inspect all_nodes}"
-    #   false -> "2D Grid: #{inspect all_nodes}"
-    # end
   end
 
-  # NETWORK : Naming the node
   def node_name(x,y,z) do
     a = x|> Integer.to_string |> String.pad_leading(4,"0")
     b = y|> Integer.to_string |> String.pad_leading(4,"0")
@@ -138,31 +148,9 @@ defmodule Torus3d do
     |>String.to_atom
   end
 
-    # NETWORK : Defining and assigning Neighbors
   def selected_neighbor(neighbors) do
     Enum.random(neighbors)
   end
 
-  # NETWORK : Choosing a neigbor randomly to send message to
-  def get_neighbors(self_x,self_y,self_z,n) do   #where n is length of grid / cuberoot of size of network
-    [left,right] =
-        case self_x do
-          1 -> [n, 2]
-          ^n -> [n-1, 1]
-          _ -> [self_x-1, self_x+1]
-        end
-    [top,bottom] =
-        case self_y do
-          1 -> [n, 2]
-          ^n -> [n-1, 1]
-          _ -> [self_y-1, self_y+1]
-        end
-    [front,back] =
-        case self_z do
-          1 -> [n, 2]
-          ^n -> [n-1, 1]
-          _ -> [self_z-1, self_z+1]
-        end
-    [node_name(left,self_y,self_z),node_name(right,self_y,self_z),node_name(self_x,top,self_z),node_name(self_x,bottom,self_z),node_name(self_x,self_y,front),node_name(self_x,self_y,back)]
-  end
+
 end
